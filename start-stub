@@ -1,0 +1,8 @@
+CMD=""
+for (( i = 1; i <= $# ; i++ )); do
+  CMD="$CMD \"${!i}\""
+done
+
+source $LIB_DIR/git-all/venv/bin/activate
+eval "python $LIB_DIR/git-all/src/__main__.py $CMD"
+
