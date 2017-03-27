@@ -8,6 +8,8 @@ First, you'll need to install the source locally. To do that, run `install.sh $B
 
 This will place an executable named `git-all` at `$BIN_DIR`, which points to the source, which will be placed at `$LIB_DIR/git-all` (along with the internal configuraiton).
 
+## Basic Usage
+
 ### Adding Credentials
 
 To add a user to access some bitbucket repositories, run `git-all add-user`. This will save the username and base64-encoded password to the internal configuration, so `git-all` can talk to bitbucket on your behalf.
