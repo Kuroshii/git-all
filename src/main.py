@@ -4,6 +4,7 @@ import getpass
 import os
 import subprocess
 import sys
+import time
 
 from controller import Controller
 
@@ -33,7 +34,39 @@ def setup_commands():
                 'quiet': {
                     'flag': '-q',
                     'help': "Don't print any output"
+                },
+            },
+            'args': [
+                {
+                    'name': 'repo_names',
+                    'help': 'The repo(s) to run the command in'
+                },
+                {
+                    'name': 'action',
+                    'help': 'The command action to perform in each repo',
+                    'type': 'remainder'
                 }
+            ]
+        },
+        'pardo': {
+            'run': Commands.run_in_repos_parallel,
+            'help': 'Run a command in a set of installed repos',
+            'options': {
+                'max_processes': {
+                    'flag': '-p',
+                    'default': '4',
+                    'help': 'How many simultaneous processes to allow'
+                }
+            },
+            'flags': {
+                'clean': {
+                    'flag': '-c',
+                    'help': "Don't print headers or extra newlines for output"
+                },
+                'quiet': {
+                    'flag': '-q',
+                    'help': "Don't print any output"
+                },
             },
             'args': [
                 {
@@ -201,17 +234,27 @@ def get_auth(username):
     return base64.standard_b64encode(unencoded_auth_secret.encode('utf-8')).decode('utf-8')
 
 
-def run_command(command, path=None):
-    process = subprocess.Popen(command,
-                               cwd=path,
-                               stdout=subprocess.PIPE,
-                               stderr=subprocess.PIPE)
+def start_command(command, path=None):
+    return subprocess.Popen(command,
+                            cwd=path,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE)
+
+
+def process_finished(process):
+    return process.poll() is not None
+
+def join_process(process):
     out, error = process.communicate()
-    
+
     return (out.decode('utf-8'),
             error.decode('utf-8'),
             process.returncode)
-            
+
+
+def run_command(command, path=None):
+    return join_process(start_command(command, path))
+
 
 class Commands:
     def __init__(self, controller):
@@ -365,12 +408,47 @@ class Commands:
             for repo in self.controller.get_repos_at(location):
                 print('  {}'.format(repo))
 
+    def run_in_repos_parallel(self, repo_names, action, max_processes, quiet, clean):
+        max_processes = int(max_processes)
+
+        requested_repos = self.parse_repos(repo_names)
+        processes = set()
+
+        printable_action = ' '.join(action)
+
+        while len(requested_repos) > 0:
+            if len(processes) < max_processes:
+                repo = requested_repos.pop()
+                short_name = repo.split('/')[-1]
+
+                repo_parent = self.controller.get_repo_path(repo)
+                if repo_parent == None:
+                    continue
+
+                repo_location = '{}/{}'.format(repo_parent, short_name)
+
+                if not clean and not quiet:
+                    print("{}: executing '{}'".format(short_name, printable_action))
+
+                processes.add(start_command(action, repo_location))
+            else:
+                finished = set()
+                for process in processes:
+                    if process_finished(process):
+                        if not clean:
+                            print("{}: finished".format(short_name))
+                        if not quiet:
+                            output, error, status = join_process(process)
+                            sys.stdout.write(error or output)
+                        finished.add(process)
+                processes -= finished
+                time.sleep(0.1)
+
     def run_in_repos(self, repo_names, action, quiet, clean):
         for repo in self.parse_repos(repo_names):
             repo_location = self.controller.get_repo_path(repo)
 
             if not repo_location:
-                print('{} is not installed'.format(repo))
                 continue
 
             short_repo_name = repo.split('/')[-1]
@@ -379,7 +457,7 @@ class Commands:
             ))
             if quiet:
                 continue
-            
+
             if error or output:
                 if clean:
                     sys.stdout.write(error or output)
