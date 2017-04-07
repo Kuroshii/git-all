@@ -437,8 +437,8 @@ class Commands:
 
         printable_action = ' '.join(action)
 
-        while len(requested_repos) > 0:
-            if len(processes) < max_processes:
+        while len(requested_repos) > 0 or len(processes) > 0:
+            if len(processes) < max_processes and len(requested_repos) > 0:
                 repo = requested_repos.pop()
                 short_name = repo.split('/')[-1]
 
@@ -451,17 +451,17 @@ class Commands:
                 if not clean and not quiet:
                     print("{}: executing '{}'".format(short_name, printable_action))
 
-                processes.add(start_command(action, repo_location))
+                processes.add((short_name, start_command(action, repo_location)))
             else:
                 finished = set()
-                for process in processes:
+                for repo_name, process in processes:
                     if process_finished(process):
                         if not clean:
-                            print("{}: finished".format(short_name))
+                            print("{}: finished".format(repo_name))
                         if not quiet:
                             output, error, status = join_process(process)
                             sys.stdout.write(error or output)
-                        finished.add(process)
+                        finished.add((repo_name, process))
                 processes -= finished
                 time.sleep(0.1)
 
