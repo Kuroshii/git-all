@@ -278,7 +278,10 @@ class Commands:
         final_repos = []
 
         for repo_str in repos.split(','):
-            if repo_str.startswith('/'):
+            if repo_str == '--':
+                default_repos = self.controller.list_repository_group('default')
+                final_repos += default_repos
+            elif repo_str.startswith('/'):
                 group_repos = self.controller.list_repository_group(repo_str[1:])
                 final_repos += group_repos
             elif repo_str.startswith('@'):
