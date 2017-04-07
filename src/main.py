@@ -29,7 +29,7 @@ def setup_commands():
             'options': {
                 'max_processes': {
                     'flag': '-p',
-                    'default': '4',
+                    'default': '-1',
                     'help': 'How many simultaneous processes to allow'
                 }
             },
@@ -72,7 +72,7 @@ def setup_commands():
             'options': {
                 'max_processes': {
                     'flag': '-p',
-                    'default': '4',
+                    'default': '0',
                     'help': 'How many simultaneous processes to allow'
                 }
             },
@@ -431,6 +431,9 @@ class Commands:
 
     def run_in_repos_parallel(self, repo_names, action, max_processes, quiet, clean):
         max_processes = int(max_processes)
+
+        if max_processes <= 0:
+            max_processes = float("inf")
 
         requested_repos = self.parse_repos(repo_names)
         processes = set()
