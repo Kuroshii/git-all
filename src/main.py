@@ -23,6 +23,24 @@ def setup_commands():
             'run': Commands.show_repository_info,
             'help': 'List installed repositories'
         },
+        'pull': {
+            'run': Commands.pull_repos,
+            'help': 'Pull the specified repositories, assuming they are already cloned',
+            'options': {
+                'max_processes': {
+                    'flag': '-p',
+                    'default': '4',
+                    'help': 'How many simultaneous processes to allow'
+                }
+            },
+            'args': [
+                {
+                    'name': 'repo_names',
+                    'help': 'the repo(s) to pull',
+                    'default': 'default'
+                }
+            ]
+        },
         'do': {
             'run': Commands.run_in_repos,
             'help': 'Run a command in a set of installed repos',
@@ -139,7 +157,7 @@ def setup_commands():
             'args': [
                 {
                     'name': 'group_names',
-                    'help': 'the name of the group(s) to list',                    
+                    'help': 'the name of the group(s) to list',
                     'default': 'default'
                 }
             ]
@@ -467,6 +485,9 @@ class Commands:
                 else:
                     print('{}:'.format(repo))
                     print(error or output)
+
+    def pull_repos(self, repo_names, max_processes):
+        self.run_in_repos_parallel(repo_names, ['git', 'pull'], max_processes, False, False)
 
 
 def main():
